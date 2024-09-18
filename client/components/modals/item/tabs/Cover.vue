@@ -4,6 +4,16 @@
       <div class="relative self-center">
         <covers-preview-cover :src="$store.getters['globals/getLibraryItemCoverSrcById'](libraryItemId, libraryItemUpdatedAt, true)" :width="120" :book-cover-aspect-ratio="bookCoverAspectRatio" />
 
+        <!-- 左箭头按钮，点击后切换到上一张封面 -->
+        <button @click="prevCover" class="absolute left-0 transform -translate-y-1/2 text-white" style="top: 50%">
+          <span class="material-symbols text-2xl">chevron_left</span>
+        </button>
+
+        <!-- 右箭头按钮，点击后切换到下一张封面 -->
+        <button @click="nextCover" class="absolute right-0 transform -translate-y-1/2 text-white" style="top: 50%">
+          <span class="material-symbols text-2xl">chevron_right</span>
+        </button>
+
         <!-- book cover overlay -->
         <div v-if="media.coverPath" class="absolute top-0 left-0 w-full h-full z-10 opacity-0 hover:opacity-100 transition-opacity duration-100">
           <div class="absolute top-0 left-0 w-full h-16 bg-gradient-to-b from-black-600 to-transparent" />
@@ -105,7 +115,8 @@ export default {
       showLocalCovers: false,
       previewUpload: null,
       selectedFile: null,
-      provider: 'google'
+      provider: 'google',
+      currentCoverIndex: 0 // 当前显示的封面索引
     }
   },
   watch: {
@@ -182,7 +193,25 @@ export default {
         })
     }
   },
+
   methods: {
+    // 切换到上一张封面
+    prevCover() {
+      if (this.currentCoverIndex > 0) {
+        this.currentCoverIndex--
+      } else {
+        this.currentCoverIndex = this.localCovers.length - 1 // 循环到最后一张
+      }
+    },
+
+    // 切换到下一张封面
+    nextCover() {
+      if (this.currentCoverIndex < this.localCovers.length - 1) {
+        this.currentCoverIndex++
+      } else {
+        this.currentCoverIndex = 0 // 循环到第一张
+      }
+    },
     submitCoverUpload() {
       this.processingUpload = true
       var form = new FormData()
