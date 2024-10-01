@@ -4,19 +4,31 @@
       <div class="flex flex-col lg:flex-row max-w-6xl mx-auto">
         <div class="w-full flex justify-center lg:block lg:w-52" style="min-width: 208px">
           <div class="relative group" style="height: fit-content">
-            <covers-book-cover class="relative group-hover:brightness-75 transition cursor-pointer" expand-on-click :library-item="libraryItem" :width="bookCoverWidth" :book-cover-aspect-ratio="bookCoverAspectRatio" />
+            <!-- 左箭头按钮 -->
+            <div v-if="localCovers.length > 1" class="absolute left-0 top-1/2 transform -translate-y-1/2 cursor-pointer z-10" @click="previousCover">
+              <span class="material-symbols text-4xl">chevron_left</span>
+            </div>
 
-            <!-- Item Progress Bar -->
+            <!-- 使用 covers-book-cover covers-preview-cover组件显示当前封面 -->
+            <!-- <covers-book-cover v-if="localCovers.length > 0 && currentCoverIndex >= 0 && currentCoverIndex < localCovers.length" :src="getCoverUrl(localCovers[currentCoverIndex])" class="relative group-hover:brightness-75 transition cursor-pointer" expand-on-click :library-item="libraryItem" :width="bookCoverWidth" :book-cover-aspect-ratio="bookCoverAspectRatio" /> -->
+            <covers-book-cover v-if="localCovers.length > 0 && currentCoverIndex >= 0 && currentCoverIndex < localCovers.length" :src="getCoverUrl(localCovers[currentCoverIndex])" class="relative z-0 group-hover:brightness-75 transition cursor-pointer" expand-on-click :library-item="libraryItem" :width="bookCoverWidth" :book-cover-aspect-ratio="bookCoverAspectRatio" />
+            <!-- 右箭头按钮 -->
+            <div v-if="localCovers.length > 1" class="absolute right-0 top-1/2 transform -translate-y-1/2 cursor-pointer" @click="nextCover">
+              <span class="material-symbols text-4xl">chevron_right</span>
+            </div>
+
+            <!-- 封面进度条 -->
             <div v-if="!isPodcast" class="absolute bottom-0 left-0 h-1.5 shadow-sm z-10" :class="userIsFinished ? 'bg-success' : 'bg-yellow-400'" :style="{ width: 208 * progressPercent + 'px' }"></div>
 
-            <!-- Item Cover Overlay -->
-            <div class="absolute top-0 left-0 w-full h-full z-10 opacity-0 group-hover:opacity-100 pointer-events-none">
+            <!-- 封面编辑按钮 -->
+            <div class="absolute top-0 left-0 w-full h-full z-10 opacity-0 group-hover:opacity-100 pointer-events-none" @click.stop>
               <div v-show="showPlayButton && !isStreaming" class="h-full flex items-center justify-center pointer-events-none">
                 <div class="hover:text-white text-gray-200 hover:scale-110 transform duration-200 pointer-events-auto cursor-pointer" @click.stop.prevent="playItem">
                   <span class="material-symbols fill text-4xl">play_arrow</span>
                 </div>
               </div>
 
+              <!-- 编辑按钮 -->
               <span class="absolute bottom-2.5 right-2.5 z-10 material-symbols text-lg cursor-pointer text-white text-opacity-75 hover:text-opacity-100 hover:scale-110 transform duration-200 pointer-events-auto" @click="showEditCover">edit</span>
             </div>
           </div>
@@ -181,7 +193,8 @@ export default {
       episodeDownloadsQueued: [],
       showBookmarksModal: false,
       isDescriptionClamped: false,
-      showFullDescription: false
+      showFullDescription: false,
+      currentCoverIndex: 0 // 当前显示的封面索引
     }
   },
   computed: {
@@ -430,9 +443,78 @@ export default {
       }
 
       return items
+    },
+    // // 获取本地封面图片
+    // localCovers() {
+    //   return this.libraryFiles
+    //     .filter((file) => file.fileType === 'image') // 过滤出图片类型文件
+    //     .map((file) => ({
+    //       localPath: `${process.env.serverUrl}/api/items/${this.libraryItemId}/file/${file.ino}?token=${this.userToken}` // 动态生成封面路径
+    //     }))
+    // }
+    localCovers() {
+      return this.libraryFiles
+        .filter((f) => f.fileType === 'image') // 过滤出图片类型的文件
+        .map((file) => {
+          const _file = { ...file }
+          _file.localPath = `${process.env.serverUrl}/api/items/${this.libraryItemId}/file/${file.ino}?token=${this.userToken}`
+          return _file
+        })
+    },
+    // 新增计算属性，基于 currentCoverIndex 获取当前封面
+    currentCover() {
+      return this.localCovers[this.currentCoverIndex] || null
     }
   },
   methods: {
+    nextCover() {
+      console.log('Next cover clicked') // 添加调试输出
+      if (this.currentCoverIndex < this.localCovers.length - 1) {
+        this.currentCoverIndex += 1
+      } else {
+        this.currentCoverIndex = 0
+      }
+      console.log('Current cover index:', this.currentCoverIndex) // 输出当前索引
+
+      // 调用 setCover 更新主封面
+      this.setCover(this.localCovers[this.currentCoverIndex])
+    },
+
+    previousCover() {
+      console.log('Previous cover clicked') // 添加调试输出
+      if (this.currentCoverIndex > 0) {
+        this.currentCoverIndex -= 1
+      } else {
+        this.currentCoverIndex = this.localCovers.length - 1
+      }
+      console.log('Current cover index:', this.currentCoverIndex) // 输出当前索引
+
+      // 调用 setCover 更新主封面
+      this.setCover(this.localCovers[this.currentCoverIndex])
+    },
+
+    getCoverUrl(coverFile) {
+      return coverFile.localPath
+    },
+
+    // 使用 Cover.vue 中的 setCover 方法
+    setCover(coverFile) {
+      this.isProcessing = true
+      this.$axios
+        .$patch(`/api/items/${this.libraryItemId}/cover`, { cover: coverFile.metadata.path })
+        .catch((error) => {
+          console.error('Failed to set local cover', error)
+          this.$toast.error(error.response?.data || this.$strings.ToastCoverUpdateFailed)
+        })
+        .finally(() => {
+          this.isProcessing = false
+        })
+    },
+
+    showEditCover() {
+      this.$store.commit('setBookshelfBookIds', [])
+      this.$store.commit('showEditModalOnTab', { libraryItem: this.libraryItem, tab: 'cover' })
+    },
     selectBookmark(bookmark) {
       if (!bookmark) return
       if (this.isStreaming) {

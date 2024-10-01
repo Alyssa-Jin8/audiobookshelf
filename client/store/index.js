@@ -28,7 +28,8 @@ export const state = () => ({
   openModal: null,
   innerModalOpen: false,
   lastBookshelfScrollData: {},
-  routerBasePath: '/'
+  routerBasePath: '/',
+  libraryItems: []
 })
 
 export const getters = {
@@ -238,5 +239,14 @@ export const mutations = {
   },
   setInnerModalOpen(state, val) {
     state.innerModalOpen = val
+  },
+  addLibraryFile(state, { libraryItemId, file }) {
+    const libraryItem = state.libraryItems.find((item) => item.id === libraryItemId)
+    if (!libraryItem) return
+
+    // Ensure that we are pushing the new cover to the libraryFiles array without replacing the previous ones
+    if (!libraryItem.libraryFiles.some((f) => f.path === file.path)) {
+      libraryItem.libraryFiles.push(file)
+    }
   }
 }

@@ -12,7 +12,7 @@ const parseEbookMetadata = require('../utils/parsers/parseEbookMetadata')
 const CacheManager = require('../managers/CacheManager')
 
 class CoverManager {
-  constructor() { }
+  constructor() {}
 
   getCoverDirectory(libraryItem) {
     if (global.ServerSettings.storeCoverWithItem && !libraryItem.isFile) {
@@ -81,6 +81,8 @@ class CoverManager {
 
   async uploadCover(libraryItem, coverFile) {
     const extname = Path.extname(coverFile.name.toLowerCase())
+
+    // 检查是否是支持的图片类型
     if (!extname || !globals.SupportedImageTypes.includes(extname.slice(1))) {
       return {
         error: `Invalid image type ${extname} (Supported: ${globals.SupportedImageTypes.join(',')})`
@@ -90,13 +92,24 @@ class CoverManager {
     const coverDirPath = this.getCoverDirectory(libraryItem)
     await fs.ensureDir(coverDirPath)
 
-    const coverFullPath = Path.posix.join(coverDirPath, `cover${extname}`)
+    // 初始化封面路径
+    let coverFullPath = Path.posix.join(coverDirPath, `cover${extname}`)
 
-    // Move cover from temp upload dir to destination
-    const success = await coverFile.mv(coverFullPath).then(() => true).catch((error) => {
-      Logger.error('[CoverManager] Failed to move cover file', path, error)
-      return false
-    })
+    // 检查是否存在相同文件名的封面
+    if (await fs.pathExists(coverFullPath)) {
+      // 如果文件存在，生成一个唯一文件名，避免覆盖旧文件
+      const uniqueSuffix = Date.now() // 使用时间戳生成唯一文件名
+      coverFullPath = Path.posix.join(coverDirPath, `cover_${uniqueSuffix}${extname}`)
+    }
+
+    // 将封面从临时上传目录移动到目标目录
+    const success = await coverFile
+      .mv(coverFullPath)
+      .then(() => true)
+      .catch((error) => {
+        Logger.error('[CoverManager] Failed to move cover file', coverFullPath, error)
+        return false
+      })
 
     if (!success) {
       return {
@@ -104,17 +117,27 @@ class CoverManager {
       }
     }
 
-    await this.removeOldCovers(coverDirPath, extname)
+    // 获取所有封面文件并返回
+    const allFiles = await this.getFilesInDirectory(coverDirPath)
+    const imageFiles = allFiles.filter((file) => globals.SupportedImageTypes.includes(Path.extname(file).slice(1)))
+
+    // 刷新封面缓存
     await CacheManager.purgeCoverCache(libraryItem.id)
 
     Logger.info(`[CoverManager] Uploaded libraryItem cover "${coverFullPath}" for "${libraryItem.media.metadata.title}"`)
 
+    // 更新封面路径
     libraryItem.updateMediaCover(coverFullPath)
+
+    // 返回上传的封面路径和所有封面列表
     return {
-      cover: coverFullPath
+      cover: coverFullPath, // 返回当前上传的封面
+      allCovers: imageFiles.map((file) => ({
+        filePath: Path.posix.join(coverDirPath, file), // 返回文件的完整路径
+        fileName: file
+      })) // 返回所有封面文件列表
     }
   }
-
   async downloadCoverFromUrl(libraryItem, url, forceLibraryItemFolder = false) {
     try {
       // Force save cover with library item is used for adding new podcasts
@@ -124,11 +147,13 @@ class CoverManager {
       var temppath = Path.posix.join(coverDirPath, 'cover')
 
       let errorMsg = ''
-      let success = await downloadImageFile(url, temppath).then(() => true).catch((err) => {
-        errorMsg = err.message || 'Unknown error'
-        Logger.error(`[CoverManager] Download image file failed for "${url}"`, errorMsg)
-        return false
-      })
+      let success = await downloadImageFile(url, temppath)
+        .then(() => true)
+        .catch((err) => {
+          errorMsg = err.message || 'Unknown error'
+          Logger.error(`[CoverManager] Download image file failed for "${url}"`, errorMsg)
+          return false
+        })
       if (!success) {
         return {
           error: 'Failed to download image from url: ' + errorMsg
@@ -180,7 +205,7 @@ class CoverManager {
     }
 
     // Cover path does not exist
-    if (!await fs.pathExists(coverPath)) {
+    if (!(await fs.pathExists(coverPath))) {
       Logger.error(`[CoverManager] validate cover path does not exist "${coverPath}"`)
       return {
         error: 'Cover path does not exist'
@@ -188,7 +213,7 @@ class CoverManager {
     }
 
     // Cover path is not a file
-    if (!await checkPathIsFile(coverPath)) {
+    if (!(await checkPathIsFile(coverPath))) {
       Logger.error(`[CoverManager] validate cover path is not a file "${coverPath}"`)
       return {
         error: 'Cover path is not a file'
@@ -211,10 +236,13 @@ class CoverManager {
       var newCoverPath = Path.posix.join(coverDirPath, coverFilename)
       Logger.debug(`[CoverManager] validate cover path copy cover from "${coverPath}" to "${newCoverPath}"`)
 
-      var copySuccess = await fs.copy(coverPath, newCoverPath, { overwrite: true }).then(() => true).catch((error) => {
-        Logger.error(`[CoverManager] validate cover path failed to copy cover`, error)
-        return false
-      })
+      var copySuccess = await fs
+        .copy(coverPath, newCoverPath, { overwrite: true })
+        .then(() => true)
+        .catch((error) => {
+          Logger.error(`[CoverManager] validate cover path failed to copy cover`, error)
+          return false
+        })
       if (!copySuccess) {
         return {
           error: 'Failed to copy cover to dir'
@@ -236,14 +264,14 @@ class CoverManager {
 
   /**
    * Extract cover art from audio file and save for library item
-   * 
-   * @param {import('../models/Book').AudioFileObject[]} audioFiles 
-   * @param {string} libraryItemId 
-   * @param {string} [libraryItemPath] null for isFile library items 
+   *
+   * @param {import('../models/Book').AudioFileObject[]} audioFiles
+   * @param {string} libraryItemId
+   * @param {string} [libraryItemPath] null for isFile library items
    * @returns {Promise<string>} returns cover path
    */
   async saveEmbeddedCoverArt(audioFiles, libraryItemId, libraryItemPath) {
-    let audioFileWithCover = audioFiles.find(af => af.embeddedCoverArt)
+    let audioFileWithCover = audioFiles.find((af) => af.embeddedCoverArt)
     if (!audioFileWithCover) return null
 
     let coverDirPath = null
@@ -273,10 +301,10 @@ class CoverManager {
 
   /**
    * Extract cover art from ebook and save for library item
-   * 
-   * @param {import('../utils/parsers/parseEbookMetadata').EBookFileScanData} ebookFileScanData 
-   * @param {string} libraryItemId 
-   * @param {string} [libraryItemPath] null for isFile library items 
+   *
+   * @param {import('../utils/parsers/parseEbookMetadata').EBookFileScanData} ebookFileScanData
+   * @param {string} libraryItemId
+   * @param {string} [libraryItemPath] null for isFile library items
    * @returns {Promise<string>} returns cover path
    */
   async saveEbookCoverArt(ebookFileScanData, libraryItemId, libraryItemPath) {
@@ -310,9 +338,9 @@ class CoverManager {
   }
 
   /**
-   * 
-   * @param {string} url 
-   * @param {string} libraryItemId 
+   *
+   * @param {string} url
+   * @param {string} libraryItemId
    * @param {string} [libraryItemPath] null if library item isFile or is from adding new podcast
    * @returns {Promise<{error:string}|{cover:string}>}
    */
@@ -328,10 +356,12 @@ class CoverManager {
       await fs.ensureDir(coverDirPath)
 
       const temppath = Path.posix.join(coverDirPath, 'cover')
-      const success = await downloadImageFile(url, temppath).then(() => true).catch((err) => {
-        Logger.error(`[CoverManager] Download image file failed for "${url}"`, err)
-        return false
-      })
+      const success = await downloadImageFile(url, temppath)
+        .then(() => true)
+        .catch((err) => {
+          Logger.error(`[CoverManager] Download image file failed for "${url}"`, err)
+          return false
+        })
       if (!success) {
         return {
           error: 'Failed to download image from url'

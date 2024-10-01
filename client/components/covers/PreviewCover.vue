@@ -99,6 +99,7 @@ export default {
     imageError(err) {
       console.error('ImgError', err)
       this.imageFailed = true
+      this.$emit('image-failed', this.src) // 触发事件通知父组件图片加载失败
     }
   },
   mounted() {}

@@ -4,16 +4,6 @@
       <div class="relative self-center">
         <covers-preview-cover :src="$store.getters['globals/getLibraryItemCoverSrcById'](libraryItemId, libraryItemUpdatedAt, true)" :width="120" :book-cover-aspect-ratio="bookCoverAspectRatio" />
 
-        <!-- 左箭头按钮，点击后切换到上一张封面 -->
-        <button @click="prevCover" class="absolute left-0 transform -translate-y-1/2 text-white" style="top: 50%">
-          <span class="material-symbols text-2xl">chevron_left</span>
-        </button>
-
-        <!-- 右箭头按钮，点击后切换到下一张封面 -->
-        <button @click="nextCover" class="absolute right-0 transform -translate-y-1/2 text-white" style="top: 50%">
-          <span class="material-symbols text-2xl">chevron_right</span>
-        </button>
-
         <!-- book cover overlay -->
         <div v-if="media.coverPath" class="absolute top-0 left-0 w-full h-full z-10 opacity-0 hover:opacity-100 transition-opacity duration-100">
           <div class="absolute top-0 left-0 w-full h-16 bg-gradient-to-b from-black-600 to-transparent" />
@@ -115,8 +105,7 @@ export default {
       showLocalCovers: false,
       previewUpload: null,
       selectedFile: null,
-      provider: 'google',
-      currentCoverIndex: 0 // 当前显示的封面索引
+      provider: 'google'
     }
   },
   watch: {
@@ -183,46 +172,39 @@ export default {
     userToken() {
       return this.$store.getters['user/getToken']
     },
+    // localCovers 通过库中的 libraryFiles 生成封面列表
     localCovers() {
       return this.libraryFiles
-        .filter((f) => f.fileType === 'image')
+        .filter((f) => f.fileType === 'image') // 过滤出图片类型的文件
         .map((file) => {
           const _file = { ...file }
+
+          // 构建封面的本地路径
           _file.localPath = `${process.env.serverUrl}/api/items/${this.libraryItemId}/file/${file.ino}?token=${this.userToken}`
           return _file
         })
     }
   },
-
   methods: {
-    // 切换到上一张封面
-    prevCover() {
-      if (this.currentCoverIndex > 0) {
-        this.currentCoverIndex--
-      } else {
-        this.currentCoverIndex = this.localCovers.length - 1 // 循环到最后一张
-      }
-    },
-
-    // 切换到下一张封面
-    nextCover() {
-      if (this.currentCoverIndex < this.localCovers.length - 1) {
-        this.currentCoverIndex++
-      } else {
-        this.currentCoverIndex = 0 // 循环到第一张
-      }
-    },
+    // 上传封面
     submitCoverUpload() {
       this.processingUpload = true
-      var form = new FormData()
+      const form = new FormData()
       form.set('cover', this.selectedFile)
 
+      // 上传封面后获取返回数据，并更新封面列表
       this.$axios
         .$post(`/api/items/${this.libraryItemId}/cover`, form)
         .then((data) => {
           if (data.error) {
             this.$toast.error(data.error)
           } else {
+            // 上传成功，更新封面列表
+            this.libraryFiles = data.allCovers.map((file) => ({
+              ino: new Date().getTime(), // 为文件生成唯一 ID
+              metadata: { path: file.filePath }, // 使用返回的文件路径
+              fileType: 'image' // 标记为图片类型
+            }))
             this.resetCoverPreview()
           }
           this.processingUpload = false
