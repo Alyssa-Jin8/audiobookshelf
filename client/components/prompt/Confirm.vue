@@ -6,11 +6,23 @@
         <p id="confirm-prompt-message" class="text-lg mb-6 mt-2 px-1" v-html="message" />
 
         <ui-checkbox v-if="checkboxLabel" v-model="checkboxValue" checkbox-bg="bg" :label="checkboxLabel" label-class="pl-2 text-base" class="mb-6 px-1" />
-
         <div class="flex px-1 items-center">
-          <ui-btn v-if="isYesNo" color="primary" @click="nevermind">{{ $strings.ButtonCancel }}</ui-btn>
-          <div class="flex-grow" />
-          <ui-btn v-if="isYesNo" :color="yesButtonColor" @click="confirm">{{ yesButtonText }}</ui-btn>
+          <!-- 如果是多个按钮类型 -->
+
+          <template v-if="buttons.length">
+            <ui-btn v-for="(button, index) in buttons" :key="index" :color="button.color || 'primary'" @click="button.callback" class="mx-2 py-1 px-3 w-full">
+              {{ button.text }}
+            </ui-btn>
+          </template>
+
+          <!-- 如果是 yes/no 类型 -->
+          <template v-else-if="isYesNo">
+            <ui-btn color="primary" @click="nevermind">{{ $strings.ButtonCancel }}</ui-btn>
+            <div class="flex-grow" />
+            <ui-btn :color="yesButtonColor" @click="confirm">{{ yesButtonText }}</ui-btn>
+          </template>
+
+          <!-- 如果是单一 ok 类型 -->
           <ui-btn v-else color="primary" @click="confirm">{{ $strings.ButtonOk }}</ui-btn>
         </div>
       </div>
@@ -46,8 +58,14 @@ export default {
         this.$store.commit('globals/setShowConfirmPrompt', val)
       }
     },
+    // confirmPromptOptions() {
+    //   return this.$store.state.globals.confirmPromptOptions || {}
+    // },
     confirmPromptOptions() {
       return this.$store.state.globals.confirmPromptOptions || {}
+    },
+    buttons() {
+      return this.confirmPromptOptions.buttons || [] // 新增：返回按钮数组
     },
     message() {
       return this.confirmPromptOptions.message || ''

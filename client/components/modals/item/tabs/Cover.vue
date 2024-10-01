@@ -97,6 +97,8 @@ export default {
   data() {
     return {
       processingUpload: false,
+      libraryFiles: this.libraryItem?.libraryFiles || [], // 初始化 libraryFiles
+
       searchTitle: null,
       searchAuthor: null,
       imageUrl: null,
@@ -160,9 +162,9 @@ export default {
     mediaMetadata() {
       return this.media.metadata || {}
     },
-    libraryFiles() {
-      return this.libraryItem?.libraryFiles || []
-    },
+    // libraryFiles() {
+    //   return this.libraryItem?.libraryFiles || []
+    // },
     userCanUpload() {
       return this.$store.getters['user/getUserCanUpload']
     },
@@ -200,11 +202,29 @@ export default {
             this.$toast.error(data.error)
           } else {
             // 上传成功，更新封面列表
-            this.libraryFiles = data.allCovers.map((file) => ({
-              ino: new Date().getTime(), // 为文件生成唯一 ID
-              metadata: { path: file.filePath }, // 使用返回的文件路径
-              fileType: 'image' // 标记为图片类型
-            }))
+            // this.libraryFiles = data.allCovers.map((file) => ({
+            //   ino: new Date().getTime(), // 为文件生成唯一 ID
+            //   metadata: { path: file.filePath }, // 使用返回的文件路径
+            //   fileType: 'image' // 标记为图片类型
+            // }))
+            this.libraryFiles = Array.isArray(data.allCovers)
+              ? data.allCovers.map((file) => ({
+                  ino: new Date().getTime(), // 为文件生成唯一 ID
+                  metadata: { path: file.filePath }, // 使用返回的文件路径
+                  fileType: 'image' // 标记为图片类型
+                }))
+              : [] // 如果 data.allCovers 不是数组，则设置为空数组
+
+            // 更新 libraryItem 中的 libraryFiles，而不是直接修改 libraryFiles
+            // this.libraryItem.libraryFiles = Array.isArray(data.allCovers)
+            //   ? data.allCovers.map((file) => ({
+            //       ino: new Date().getTime(), // 为文件生成唯一 ID
+            //       metadata: { path: file.filePath }, // 使用返回的文件路径
+            //       fileType: 'image' // 标记为图片类型
+            //     }))
+            //   : []
+            // 强制刷新本地封面列表
+            this.$forceUpdate()
             this.resetCoverPreview()
           }
           this.processingUpload = false
@@ -226,9 +246,40 @@ export default {
       this.previewUpload = null
       this.selectedFile = null
     },
+    // fileUploadSelected(file) {
+    //   this.previewUpload = URL.createObjectURL(file)
+    //   this.selectedFile = file
+    // },
     fileUploadSelected(file) {
-      this.previewUpload = URL.createObjectURL(file)
-      this.selectedFile = file
+      const payload = {
+        message: this.$strings.ConfirmConvertImageToFormat,
+        buttons: [
+          {
+            text: this.$strings.ButtonConvertToJpg,
+            color: 'success',
+            callback: () => {
+              this.convertImageFormat(file, 'image/jpg').then((convertedFile) => {
+                this.previewUpload = URL.createObjectURL(convertedFile)
+                this.selectedFile = convertedFile
+                this.$store.commit('globals/setShowConfirmPrompt', false) // 确保在转换完成后关闭弹窗
+              })
+            }
+          },
+          {
+            text: this.$strings.ButtonConvertToPng,
+            color: 'success',
+            callback: () => {
+              this.convertImageFormat(file, 'image/png').then((convertedFile) => {
+                this.previewUpload = URL.createObjectURL(convertedFile)
+                this.selectedFile = convertedFile
+                this.$store.commit('globals/setShowConfirmPrompt', false) // 在转换完成后关闭弹窗
+              })
+            }
+          }
+        ],
+        type: 'multiple' // 类型为 multiple 来区分
+      }
+      this.$store.commit('globals/setConfirmPrompt', payload)
     },
     init() {
       this.showLocalCovers = false
@@ -324,6 +375,29 @@ export default {
         .finally(() => {
           this.isProcessing = false
         })
+    },
+    // 图片格式转换
+    convertImageFormat(file, format) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const img = new Image()
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.width
+            canvas.height = img.height
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0)
+            canvas.toBlob((blob) => {
+              const convertedFile = new File([blob], file.name.replace(/\.\w+$/, `.${format.split('/')[1]}`), { type: format })
+              resolve(convertedFile)
+            }, format)
+          }
+          img.src = event.target.result
+        }
+        reader.onerror = (error) => reject(error)
+        reader.readAsDataURL(file)
+      })
     }
   }
 }

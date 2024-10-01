@@ -169,8 +169,15 @@ export const mutations = {
   setShowConfirmPrompt(state, val) {
     state.showConfirmPrompt = val
   },
+  // setConfirmPrompt(state, options) {
+  //   state.confirmPromptOptions = options
+  //   state.showConfirmPrompt = true
+  // },
   setConfirmPrompt(state, options) {
-    state.confirmPromptOptions = options
+    state.confirmPromptOptions = {
+      ...options,
+      buttons: options.buttons || [] // 支持多个按钮
+    }
     state.showConfirmPrompt = true
   },
   setShowRawCoverPreviewModal(state, val) {

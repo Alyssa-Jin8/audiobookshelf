@@ -973,5 +973,9 @@
   "ToastUserPasswordChangeSuccess": "Password changed successfully",
   "ToastUserPasswordMismatch": "Passwords do not match",
   "ToastUserPasswordMustChange": "New password cannot match old password",
-  "ToastUserRootRequireName": "Must enter a root username"
+  "ToastUserRootRequireName": "Must enter a root username",
+
+  "ConfirmConvertImageToFormat": "Would you like to convert the uploaded image to .jpg or .png format?",
+  "ButtonConvertToJpg": "Convert to JPG",
+  "ButtonConvertToPng": "Convert to PNG"
 }
