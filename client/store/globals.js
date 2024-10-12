@@ -111,6 +111,7 @@ export const getters = {
     (libraryItemId, timestamp = null, raw = false) => {
       const placeholder = `${rootState.routerBasePath}/book_placeholder.jpg`
       if (!libraryItemId) return placeholder
+
       const userToken = rootGetters['user/getToken']
       if (process.env.NODE_ENV !== 'production') {
         // Testing

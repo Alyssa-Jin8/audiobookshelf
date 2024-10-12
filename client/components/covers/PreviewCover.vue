@@ -99,7 +99,7 @@ export default {
     imageError(err) {
       console.error('ImgError', err)
       this.imageFailed = true
-      this.$emit('image-failed', this.src)
+      // this.$emit('image-failed', this.src)
     }
   },
   mounted() {}

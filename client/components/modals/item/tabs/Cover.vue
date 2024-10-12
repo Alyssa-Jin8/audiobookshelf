@@ -30,21 +30,23 @@
         </div>
 
         <div v-if="localCovers.length" class="mb-4 mt-6 border-t border-b border-white border-opacity-10">
-          <div class="flex items-center justify-center py-2">
-            <p>{{ localCovers.length }} local image{{ localCovers.length !== 1 ? 's' : '' }}</p>
-            <div class="flex-grow" />
-            <ui-btn small @click="showLocalCovers = !showLocalCovers">{{ showLocalCovers ? $strings.ButtonHide : $strings.ButtonShow }}</ui-btn>
-          </div>
-
-          <div v-if="showLocalCovers" class="flex items-center justify-center pb-2">
-            <template v-for="localCoverFile in localCovers">
-              <div :key="localCoverFile.ino" class="m-0.5 mb-5 border-2 border-transparent hover:border-yellow-300 cursor-pointer" :class="localCoverFile.metadata.path === coverPath ? 'border-yellow-300' : ''" @click="setCover(localCoverFile)">
-                <div class="h-24 bg-primary" :style="{ width: 96 / bookCoverAspectRatio + 'px' }">
-                  <covers-preview-cover :src="localCoverFile.localPath" :width="96 / bookCoverAspectRatio" :book-cover-aspect-ratio="bookCoverAspectRatio" />
+          <template v-for="(localCoverFile, index) in localCovers">
+            <div :key="localCoverFile.ino" class="border-b border-white border-opacity-10">
+              <div class="flex items-center justify-between py-2 px-4">
+                <p>local image {{ index + 1 }}</p>
+                <ui-btn small @click="toggleCoverVisibility(index)">
+                  {{ coverVisibility[index] ? $strings.ButtonHide : $strings.ButtonShow }}
+                </ui-btn>
+              </div>
+              <div v-if="coverVisibility[index]" class="flex items-center justify-center pb-2">
+                <div class="m-0.5 border-2 border-transparent hover:border-yellow-300 cursor-pointer" :class="localCoverFile.metadata.path === coverPath ? 'border-yellow-300' : ''" @click="setCover(localCoverFile)">
+                  <div class="h-24 bg-primary" :style="{ width: 96 / bookCoverAspectRatio + 'px' }">
+                    <covers-preview-cover :src="localCoverFile.localPath" :width="96 / bookCoverAspectRatio" :book-cover-aspect-ratio="bookCoverAspectRatio" />
+                  </div>
                 </div>
               </div>
-            </template>
-          </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -98,7 +100,7 @@ export default {
     return {
       processingUpload: false,
       libraryFiles: this.libraryItem?.libraryFiles || [], // Initialize libraryFiles
-
+      coverVisibility: [],
       searchTitle: null,
       searchAuthor: null,
       imageUrl: null,
@@ -187,6 +189,9 @@ export default {
     }
   },
   methods: {
+    toggleCoverVisibility(index) {
+      this.$set(this.coverVisibility, index, !this.coverVisibility[index]) // Specify the display status of the cover
+    },
     submitCoverUpload() {
       this.processingUpload = true
       const form = new FormData()
@@ -262,7 +267,8 @@ export default {
       this.$store.commit('globals/setConfirmPrompt', payload)
     },
     init() {
-      this.showLocalCovers = false
+      // this.showLocalCovers = false
+      this.coverVisibility = this.localCovers.map(() => false) // Initialize display status for each cover
       if (this.coversFound.length && (this.searchTitle !== this.mediaMetadata.title || this.searchAuthor !== this.mediaMetadata.authorName)) {
         this.coversFound = []
         this.hasSearched = false
