@@ -82,7 +82,7 @@ class CoverManager {
   async uploadCover(libraryItem, coverFile) {
     const extname = Path.extname(coverFile.name.toLowerCase())
 
-    // 检查是否是支持的图片类型
+    // Check if it is a supported image type
     if (!extname || !globals.SupportedImageTypes.includes(extname.slice(1))) {
       return {
         error: `Invalid image type ${extname} (Supported: ${globals.SupportedImageTypes.join(',')})`
@@ -92,17 +92,14 @@ class CoverManager {
     const coverDirPath = this.getCoverDirectory(libraryItem)
     await fs.ensureDir(coverDirPath)
 
-    // 初始化封面路径
     let coverFullPath = Path.posix.join(coverDirPath, `cover${extname}`)
 
-    // 检查是否存在相同文件名的封面
+    // Check for covers with the same file name
     if (await fs.pathExists(coverFullPath)) {
-      // 如果文件存在，生成一个唯一文件名，避免覆盖旧文件
-      const uniqueSuffix = Date.now() // 使用时间戳生成唯一文件名
+      // If the file exists, generate a unique file name to avoid overwriting old files
+      const uniqueSuffix = Date.now() // Generate unique file names using timestamps
       coverFullPath = Path.posix.join(coverDirPath, `cover_${uniqueSuffix}${extname}`)
     }
-
-    // 将封面从临时上传目录移动到目标目录
     const success = await coverFile
       .mv(coverFullPath)
       .then(() => true)
@@ -117,25 +114,25 @@ class CoverManager {
       }
     }
 
-    // 获取所有封面文件并返回
+    // Get all cover files and return
     const allFiles = await this.getFilesInDirectory(coverDirPath)
     const imageFiles = allFiles.filter((file) => globals.SupportedImageTypes.includes(Path.extname(file).slice(1)))
 
-    // 刷新封面缓存
+    //Refresh Cover Cache
     await CacheManager.purgeCoverCache(libraryItem.id)
 
     Logger.info(`[CoverManager] Uploaded libraryItem cover "${coverFullPath}" for "${libraryItem.media.metadata.title}"`)
 
-    // 更新封面路径
+    // Update Cover Path
     libraryItem.updateMediaCover(coverFullPath)
 
-    // 返回上传的封面路径和所有封面列表
+    // Returns the path to the uploaded cover and a list of all covers
     return {
-      cover: coverFullPath, // 返回当前上传的封面
+      cover: coverFullPath, // Returns the currently uploaded cover
       allCovers: imageFiles.map((file) => ({
-        filePath: Path.posix.join(coverDirPath, file), // 返回文件的完整路径
+        filePath: Path.posix.join(coverDirPath, file), // Returns the full path of the file
         fileName: file
-      })) // 返回所有封面文件列表
+      }))
     }
   }
   async downloadCoverFromUrl(libraryItem, url, forceLibraryItemFolder = false) {
@@ -168,6 +165,12 @@ class CoverManager {
 
       var coverFilename = `cover.${imgtype.ext}`
       var coverFullPath = Path.posix.join(coverDirPath, coverFilename)
+      // If the cover file already exists, generate a unique file name
+      if (await fs.pathExists(coverFullPath)) {
+        const uniqueSuffix = Date.now()
+        coverFullPath = Path.posix.join(coverDirPath, `cover_${uniqueSuffix}.${imgtype.ext}`)
+      }
+
       await fs.rename(temppath, coverFullPath)
 
       await this.removeOldCovers(coverDirPath, '.' + imgtype.ext)

@@ -176,7 +176,7 @@ export const mutations = {
   setConfirmPrompt(state, options) {
     state.confirmPromptOptions = {
       ...options,
-      buttons: options.buttons || [] // 支持多个按钮
+      buttons: options.buttons || [] //  Support for multiple buttons
     }
     state.showConfirmPrompt = true
   },

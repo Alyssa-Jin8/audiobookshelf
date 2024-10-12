@@ -97,7 +97,7 @@ export default {
   data() {
     return {
       processingUpload: false,
-      libraryFiles: this.libraryItem?.libraryFiles || [], // 初始化 libraryFiles
+      libraryFiles: this.libraryItem?.libraryFiles || [], // Initialize libraryFiles
 
       searchTitle: null,
       searchAuthor: null,
@@ -174,57 +174,37 @@ export default {
     userToken() {
       return this.$store.getters['user/getToken']
     },
-    // localCovers 通过库中的 libraryFiles 生成封面列表
+    // localCovers generates cover lists from libraryFiles in the library
     localCovers() {
       return this.libraryFiles
-        .filter((f) => f.fileType === 'image') // 过滤出图片类型的文件
+        .filter((f) => f.fileType === 'image')
         .map((file) => {
           const _file = { ...file }
 
-          // 构建封面的本地路径
           _file.localPath = `${process.env.serverUrl}/api/items/${this.libraryItemId}/file/${file.ino}?token=${this.userToken}`
           return _file
         })
     }
   },
   methods: {
-    // 上传封面
     submitCoverUpload() {
       this.processingUpload = true
       const form = new FormData()
       form.set('cover', this.selectedFile)
-
-      // 上传封面后获取返回数据，并更新封面列表
       this.$axios
         .$post(`/api/items/${this.libraryItemId}/cover`, form)
         .then((data) => {
           if (data.error) {
             this.$toast.error(data.error)
           } else {
-            // 上传成功，更新封面列表
-            // this.libraryFiles = data.allCovers.map((file) => ({
-            //   ino: new Date().getTime(), // 为文件生成唯一 ID
-            //   metadata: { path: file.filePath }, // 使用返回的文件路径
-            //   fileType: 'image' // 标记为图片类型
-            // }))
             this.libraryFiles = Array.isArray(data.allCovers)
               ? data.allCovers.map((file) => ({
-                  ino: new Date().getTime(), // 为文件生成唯一 ID
-                  metadata: { path: file.filePath }, // 使用返回的文件路径
-                  fileType: 'image' // 标记为图片类型
+                  ino: new Date().getTime(), // Generate unique ino for files
+                  metadata: { path: file.filePath },
+                  fileType: 'image' // Mark as image type
                 }))
-              : [] // 如果 data.allCovers 不是数组，则设置为空数组
+              : [] // If data.allCovers is not an array, set to empty array
 
-            // 更新 libraryItem 中的 libraryFiles，而不是直接修改 libraryFiles
-            // this.libraryItem.libraryFiles = Array.isArray(data.allCovers)
-            //   ? data.allCovers.map((file) => ({
-            //       ino: new Date().getTime(), // 为文件生成唯一 ID
-            //       metadata: { path: file.filePath }, // 使用返回的文件路径
-            //       fileType: 'image' // 标记为图片类型
-            //     }))
-            //   : []
-            // 强制刷新本地封面列表
-            this.$forceUpdate()
             this.resetCoverPreview()
           }
           this.processingUpload = false
@@ -261,7 +241,7 @@ export default {
               this.convertImageFormat(file, 'image/jpg').then((convertedFile) => {
                 this.previewUpload = URL.createObjectURL(convertedFile)
                 this.selectedFile = convertedFile
-                this.$store.commit('globals/setShowConfirmPrompt', false) // 确保在转换完成后关闭弹窗
+                this.$store.commit('globals/setShowConfirmPrompt', false)
               })
             }
           },
@@ -272,12 +252,12 @@ export default {
               this.convertImageFormat(file, 'image/png').then((convertedFile) => {
                 this.previewUpload = URL.createObjectURL(convertedFile)
                 this.selectedFile = convertedFile
-                this.$store.commit('globals/setShowConfirmPrompt', false) // 在转换完成后关闭弹窗
+                this.$store.commit('globals/setShowConfirmPrompt', false)
               })
             }
           }
         ],
-        type: 'multiple' // 类型为 multiple 来区分
+        type: 'multiple'
       }
       this.$store.commit('globals/setConfirmPrompt', payload)
     },
@@ -364,6 +344,7 @@ export default {
       this.isProcessing = false
       this.hasSearched = true
     },
+
     setCover(coverFile) {
       this.isProcessing = true
       this.$axios
@@ -376,7 +357,7 @@ export default {
           this.isProcessing = false
         })
     },
-    // 图片格式转换
+    // Image format conversion
     convertImageFormat(file, format) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
