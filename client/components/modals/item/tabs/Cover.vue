@@ -186,6 +186,10 @@ export default {
           _file.localPath = `${process.env.serverUrl}/api/items/${this.libraryItemId}/file/${file.ino}?token=${this.userToken}`
           return _file
         })
+    },
+    // Number of covers
+    hasTooManyCovers() {
+      return this.localCovers.length >= 10
     }
   },
   methods: {
@@ -193,6 +197,10 @@ export default {
       this.$set(this.coverVisibility, index, !this.coverVisibility[index]) // Specify the display status of the cover
     },
     submitCoverUpload() {
+      if (this.hasTooManyCovers) {
+        this.$toast.warning(this.$strings.ToastCoverLimitExceeded)
+        return
+      }
       this.processingUpload = true
       const form = new FormData()
       form.set('cover', this.selectedFile)
