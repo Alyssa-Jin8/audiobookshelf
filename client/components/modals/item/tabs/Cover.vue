@@ -189,7 +189,7 @@ export default {
     },
     // Number of covers
     hasTooManyCovers() {
-      return this.localCovers.length >= 10
+      return this.localCovers.length >= 20
     }
   },
   methods: {
@@ -305,6 +305,7 @@ export default {
           this.isProcessing = false
         })
     },
+
     submitForm() {
       this.updateCover(this.imageUrl)
     },

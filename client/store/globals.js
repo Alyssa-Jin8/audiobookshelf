@@ -91,6 +91,7 @@ export const getters = {
       if (!libraryItem) return placeholder
       const media = libraryItem.media
       if (!media?.coverPath || media.coverPath === placeholder) return placeholder
+      // if (!media?.coverPath || media.coverPath === placeholder || media.coverPath === null) return placeholder
 
       // Absolute URL covers (should no longer be used)
       if (media.coverPath.startsWith('http:') || media.coverPath.startsWith('https:')) return media.coverPath

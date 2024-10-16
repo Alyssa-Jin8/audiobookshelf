@@ -978,5 +978,5 @@
   "ConfirmConvertImageToFormat": "Would you like to convert the uploaded image to .jpg or .png format?",
   "ButtonConvertToJpg": "Convert to JPG",
   "ButtonConvertToPng": "Convert to PNG",
-  "ToastCoverLimitExceeded": "You cannot upload more than 20 covers."
+  "ToastCoverLimitExceeded": "You have reached the 20 cover upload limit."
 }
