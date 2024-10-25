@@ -796,6 +796,16 @@ class LibraryItemController {
     })
     req.libraryItem.removeLibraryFile(req.params.fileid)
 
+    /*
+      // Currently if we delete the file used for the cover, we get a broken imge rather than the default.
+      // To use default, we need to set the cover to null.
+      // If we are removing the current cover file, set the cover field to null
+      if req.libraryItem.cover === req.libraryFile {
+         req.libraryItem.cover = undefined;
+         req.libraryItem.commit();
+      }
+    */
+
     if (req.libraryItem.media.removeFileWithInode(req.params.fileid)) {
       // If book has no more media files then mark it as missing
       if (req.libraryItem.mediaType === 'book' && !req.libraryItem.media.hasMediaEntities) {

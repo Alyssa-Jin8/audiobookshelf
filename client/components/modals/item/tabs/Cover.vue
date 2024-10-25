@@ -210,13 +210,13 @@ export default {
           if (data.error) {
             this.$toast.error(data.error)
           } else {
-            this.libraryFiles = Array.isArray(data.allCovers)
-              ? data.allCovers.map((file) => ({
-                  ino: new Date().getTime(), // Generate unique ino for files
-                  metadata: { path: file.filePath },
-                  fileType: 'image' // Mark as image type
-                }))
-              : [] // If data.allCovers is not an array, set to empty array
+            const newCover = {
+              ino: new Date().getTime(),
+              metadata: { path: data.filePath },
+              fileType: 'image'
+            }
+
+            this.libraryFiles = [...this.libraryFiles, newCover]
 
             this.resetCoverPreview()
           }
@@ -232,6 +232,7 @@ export default {
           this.processingUpload = false
         })
     },
+
     resetCoverPreview() {
       if (this.$refs.fileInput) {
         this.$refs.fileInput.reset()
